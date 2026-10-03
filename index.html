@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#02050a">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>جارویس</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Vazirmatn:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --rgb:79,216,255; --bg:#02050a; --text:#e6f6ff; --muted:#6f8ea5; }
+  body[data-state="transcribing"],body[data-state="thinking"]{ --rgb:180,140,255; }
+  body[data-state="review"]{ --rgb:255,184,77; }
+  body[data-state="speaking"]{ --rgb:62,230,160; }
+  body[data-state="error"]{ --rgb:255,93,108; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:'Vazirmatn',Tahoma,sans-serif;color:var(--text);background:var(--bg);min-height:100dvh;overflow-x:hidden}
+  #bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+  .hexgrid{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
+    background-image:linear-gradient(rgba(var(--rgb),.10) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--rgb),.10) 1px,transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 40%,#000 0,transparent 72%);mask-image:radial-gradient(circle at 50% 40%,#000 0,transparent 72%)}
+  .scan{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0,rgba(0,0,0,.28) 1px,transparent 1px,transparent 3px)}
+  .vignette{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(circle at 50% 45%,transparent 45%,rgba(0,0,0,.75) 100%)}
+  .sweepline{position:fixed;left:0;right:0;height:140px;z-index:3;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(var(--rgb),.07),transparent);animation:sweep 7s linear infinite}
+  @keyframes sweep{from{transform:translateY(-160px)}to{transform:translateY(110vh)}}
+
+  .app{position:relative;z-index:2;max-width:620px;margin:0 auto;min-height:100dvh;
+    padding:max(14px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center}
+
+  header{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(var(--rgb),.25);position:relative}
+  header::after{content:"";position:absolute;bottom:-1px;right:0;width:90px;height:2px;background:rgb(var(--rgb));box-shadow:0 0 12px rgb(var(--rgb))}
+  .brand{font-family:'Orbitron',sans-serif;font-weight:900;font-size:17px;letter-spacing:4px;color:rgb(var(--rgb));text-shadow:0 0 14px rgba(var(--rgb),.7);direction:ltr}
+  .brand small{display:block;font-family:'Vazirmatn';font-weight:300;font-size:11px;letter-spacing:0;color:var(--muted);text-shadow:none;direction:rtl}
+  .clock{text-align:left;direction:ltr;font-family:'Orbitron',sans-serif;font-size:15px;color:var(--text);letter-spacing:2px}
+  .clock small{display:block;font-family:'Vazirmatn';font-size:11px;color:var(--muted);letter-spacing:0;direction:rtl;text-align:left}
+  .hbtn{background:none;border:1px solid rgba(var(--rgb),.35);color:rgb(var(--rgb));width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px}
+
+  .strip{width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;direction:ltr}
+  .chip{border:1px solid rgba(var(--rgb),.22);background:rgba(var(--rgb),.05);padding:6px 8px;border-radius:6px;
+    font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:1.5px;color:var(--muted);line-height:1.5}
+  .chip b{display:block;font-size:11px;color:var(--text);font-weight:500;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar{height:4px;background:rgba(var(--rgb),.15);margin-top:4px;border-radius:2px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:rgb(var(--rgb));box-shadow:0 0 8px rgb(var(--rgb));transition:width .08s}
+
+  .hud-wrap{position:relative;margin-top:10px;width:min(94vw,42dvh,440px);aspect-ratio:1;flex:none}
+  #hud{width:100%;height:100%;display:block;cursor:pointer}
+  .status{margin-top:2px;display:flex;align-items:center;gap:8px;font-size:13px;color:rgb(var(--rgb));direction:ltr;
+    font-family:'Orbitron',sans-serif;letter-spacing:2px;text-shadow:0 0 10px rgba(var(--rgb),.6)}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgb(var(--rgb));box-shadow:0 0 12px rgb(var(--rgb));animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .hint{margin-top:6px;color:var(--muted);font-size:13px;text-align:center;min-height:20px}
+
+  .diag{display:none;width:100%;margin-top:10px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.9;
+    border:1px solid rgba(255,93,108,.5);background:rgba(255,93,108,.08);color:#ffd2d7}
+  .diag.show{display:block}
+  .diag b{color:#fff}
+
+  #timers{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px;direction:ltr}
+  .tm{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:1px;padding:4px 10px;border:1px solid rgba(62,230,160,.5);color:#3ee6a0;background:rgba(62,230,160,.07);border-radius:20px}
+
+  .mic{margin-top:12px;width:70px;height:70px;border-radius:50%;border:2px solid rgb(var(--rgb));cursor:pointer;
+    background:radial-gradient(circle,rgba(var(--rgb),.25),rgba(var(--rgb),.04));color:rgb(var(--rgb));
+    box-shadow:0 0 22px rgba(var(--rgb),.45),inset 0 0 18px rgba(var(--rgb),.2);display:grid;place-items:center;transition:.2s;flex:none}
+  .mic svg{width:30px;height:30px;fill:currentColor}
+  .mic:active{transform:scale(.94)}
+  body[data-state="listening"] .mic{animation:micp 1s infinite}
+  @keyframes micp{50%{box-shadow:0 0 38px rgba(var(--rgb),.9),inset 0 0 26px rgba(var(--rgb),.4)}}
+
+  .card{position:relative;width:100%;margin-top:14px;padding:14px 16px;border-radius:4px;
+    background:linear-gradient(180deg,rgba(var(--rgb),.08),rgba(8,16,28,.7));border:1px solid rgba(var(--rgb),.2);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .card i.c{position:absolute;width:14px;height:14px;border:2px solid rgb(var(--rgb));filter:drop-shadow(0 0 4px rgb(var(--rgb)))}
+  .card i.c:nth-of-type(1){top:-2px;right:-2px;border-left:0;border-bottom:0}
+  .card i.c:nth-of-type(2){top:-2px;left:-2px;border-right:0;border-bottom:0}
+  .card i.c:nth-of-type(3){bottom:-2px;right:-2px;border-left:0;border-top:0}
+  .card i.c:nth-of-type(4){bottom:-2px;left:-2px;border-right:0;border-top:0}
+  .label{font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;direction:rtl}
+  .label span{font-family:'Orbitron';letter-spacing:2px;font-size:9px;color:rgb(var(--rgb));direction:ltr}
+  #heard{width:100%;min-height:64px;background:transparent;border:0;outline:0;resize:none;color:var(--text);font:inherit;font-size:18px;line-height:1.9}
+  #heard::placeholder{color:#3d5568}
+  .actions{display:flex;gap:10px;margin-top:10px}
+  .btn{flex:1;font:inherit;font-size:15px;padding:12px;cursor:pointer;color:var(--text);transition:.2s;
+    border:1px solid rgba(var(--rgb),.35);background:rgba(var(--rgb),.06);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+  .btn:disabled{opacity:.3;cursor:not-allowed}
+  .btn:active{transform:scale(.97)}
+  .btn.ok{background:linear-gradient(135deg,#17855a,#3ee6a0);border:0;color:#03150e;font-weight:700}
+  .btn.retry{border-color:rgba(255,184,77,.5);color:#ffb84d}
+
+  .chat{width:100%;margin-top:14px;display:flex;flex-direction:column;gap:8px;max-height:34vh;overflow:auto;padding:2px}
+  .msg{padding:9px 12px;font-size:15px;line-height:1.9;white-space:pre-wrap;word-break:break-word;max-width:92%}
+  .msg.user{align-self:flex-start;border-right:3px solid #ffb84d;background:rgba(255,184,77,.07)}
+  .msg.ai{align-self:flex-end;border-right:3px solid rgb(var(--rgb));background:rgba(var(--rgb),.07)}
+  .msg.sys{align-self:center;font-size:12px;color:var(--muted);border:0;background:none}
+  footer{margin-top:14px;font-size:11px;color:#3d5568;text-align:center;line-height:1.9}
+
+  /* settings drawer */
+  #settings{position:fixed;inset:0;z-index:40;background:rgba(2,5,10,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    display:none;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px 24px}
+  #settings.open{display:block}
+  .sbox{max-width:560px;margin:0 auto}
+  .sbox h2{font-size:16px;margin-bottom:14px;color:rgb(var(--rgb));display:flex;justify-content:space-between;align-items:center}
+  .row{margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.9}
+  .row label.t{display:block;color:var(--text);font-size:14px;margin-bottom:4px}
+  select{width:100%;font:inherit;font-size:14px;padding:10px;background:#07121e;color:var(--text);border:1px solid rgba(var(--rgb),.35);border-radius:6px}
+  .chk{display:flex;align-items:center;gap:8px;color:var(--text);font-size:14px;margin-bottom:8px}
+  .chk input{accent-color:#4fd8ff;width:18px;height:18px}
+  .sbtn{display:block;width:100%;margin-top:8px;font:inherit;font-size:14px;padding:11px;cursor:pointer;color:var(--text);
+    border:1px solid rgba(var(--rgb),.35);background:rgba(var(--rgb),.06);border-radius:6px}
+  .sbtn.danger{border-color:rgba(255,93,108,.5);color:#ff8f9a}
+
+  /* boot */
+  #boot{position:fixed;inset:0;z-index:50;background:radial-gradient(circle at 50% 40%,#08182a,#02050a 70%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;transition:opacity .8s,visibility .8s;overflow:auto}
+  #boot.hide{opacity:0;visibility:hidden;pointer-events:none}
+  #boot h1{font-family:'Orbitron',sans-serif;font-weight:900;font-size:clamp(30px,9vw,54px);letter-spacing:.35em;color:#4fd8ff;
+    text-shadow:0 0 24px rgba(79,216,255,.8);direction:ltr;margin-right:-.35em;animation:glitch 4s infinite}
+  @keyframes glitch{0%,92%,100%{transform:none;text-shadow:0 0 24px rgba(79,216,255,.8)}
+    93%{transform:translateX(-3px);text-shadow:3px 0 #ff3b6b,-3px 0 #3bffea}95%{transform:translateX(3px);text-shadow:-3px 0 #ff3b6b,3px 0 #3bffea}97%{transform:none}}
+  #bootlog{direction:ltr;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:1.5px;color:#4fd8ff;opacity:.9;min-height:78px;width:min(92vw,380px);line-height:2;white-space:pre}
+  #loadbox{display:none;width:min(92vw,380px)}
+  #loadbox.show{display:block}
+  .loadrow{display:flex;justify-content:space-between;font-size:12px;color:#9fc3d8;margin:8px 0 4px}
+  .pbar{height:6px;background:rgba(79,216,255,.15);border-radius:3px;overflow:hidden}
+  .pbar i{display:block;height:100%;width:0;background:#4fd8ff;box-shadow:0 0 10px #4fd8ff;transition:width .2s}
+  #activate,#enter{font:inherit;font-size:17px;font-weight:600;color:#02121c;padding:14px 34px;border:0;cursor:pointer;
+    background:linear-gradient(135deg,#2bb5dc,#7ff0ff);box-shadow:0 0 30px rgba(79,216,255,.6);
+    clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
+  #activate:disabled{opacity:.5}
+  #enter{display:none;font-size:14px;padding:10px 24px;background:transparent;color:#4fd8ff;border:1px solid rgba(79,216,255,.5);box-shadow:none}
+  #enter.show{display:block}
+  #bootnote{font-size:12px;color:#6f8ea5;text-align:center;max-width:340px;line-height:1.9}
+</style>
+</head>
+<body data-state="boot">
+<canvas id="bg"></canvas>
+<div class="hexgrid"></div><div class="scan"></div><div class="vignette"></div><div class="sweepline"></div>
+
+<div class="app">
+  <header>
+    <div class="brand">J.A.R.V.I.S<small>جارویس · دستیار آفلاین</small></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="clock"><span id="clk">00:00:00</span><small id="dt"></small></div>
+      <button class="hbtn" id="gear" title="تنظیمات">⚙</button>
+      <button class="hbtn" id="pwr" title="خاموش کردن">⏻</button>
+    </div>
+  </header>
+
+  <div class="strip">
+    <div class="chip">MIC<div class="bar"><i id="micbar"></i></div><b id="micperm">—</b></div>
+    <div class="chip">EARS<b id="earsChip">—</b></div>
+    <div class="chip">BRAIN<b id="brainChip">—</b></div>
+    <div class="chip">NETWORK<b id="net">—</b></div>
+  </div>
+
+  <div class="hud-wrap"><canvas id="hud"></canvas></div>
+  <div class="status"><span class="dot"></span><span id="statusText">OFFLINE</span></div>
+  <p class="hint" id="hint"></p>
+  <div class="diag" id="diag"></div>
+  <div id="timers"></div>
+
+  <button class="mic" id="mic" aria-label="میکروفون">
+    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+  </button>
+
+  <section class="card">
+    <i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i>
+    <div class="label">چیزی که فهمیدم (می‌تونی ویرایش یا تایپ کنی)<span>TRANSCRIPT</span></div>
+    <textarea id="heard" rows="2" placeholder="بگو، یا اینجا تایپ کن…"></textarea>
+    <div class="actions">
+      <button class="btn retry" id="retry" disabled>🎤 دوباره</button>
+      <button class="btn ok" id="confirm" disabled>✓ اوکی</button>
+    </div>
+  </section>
+
+  <section class="chat" id="chat"></section>
+  <footer>نسخه‌ی ۳ — آفلاین. مدل‌های کوچیک گاهی اشتباه می‌کنن؛ به جواب‌های مهم تکیه نکن.</footer>
+</div>
+
+<aside id="settings">
+  <div class="sbox">
+    <h2>تنظیمات <button class="hbtn" id="closeSettings">✕</button></h2>
+
+    <div class="row">
+      <label class="t" for="asrSel">گوش‌ها (تشخیص گفتار فارسی)</label>
+      <select id="asrSel"></select>
+    </div>
+    <div class="row">
+      <label class="t" for="llmSel">مغز (مدل زبانی)</label>
+      <select id="llmSel"></select>
+      <div id="gpuInfo"></div>
+    </div>
+    <button class="sbtn" id="applyModels">اعمال مدل‌ها (بارگذاری دوباره)</button>
+
+    <div class="row" style="margin-top:18px">
+      <label class="chk"><input type="checkbox" id="setSpeak"> جواب صوتی</label>
+      <label class="chk"><input type="checkbox" id="setConfirm"> تأیید قبل از اجرا (اوکی / دوباره)</label>
+      <label class="chk"><input type="checkbox" id="setAuto"> توقف خودکار ضبط وقتی ساکت شدم</label>
+      <div id="voiceInfo"></div>
+      <button class="sbtn" id="testVoice">تست صدا</button>
+    </div>
+
+    <div class="row">
+      <div id="storageInfo"></div>
+      <button class="sbtn" id="clearNotes">پاک کردن همه‌ی یادداشت‌ها</button>
+      <button class="sbtn danger" id="clearModels">پاک کردن مدل‌های دانلودشده</button>
+    </div>
+  </div>
+</aside>
+
+<div id="boot">
+  <h1>JARVIS</h1>
+  <div id="bootlog"></div>
+  <div id="loadbox">
+    <div class="loadrow"><span>گوش‌ها (Whisper)</span><span id="txtEars">—</span></div>
+    <div class="pbar"><i id="barEars"></i></div>
+    <div class="loadrow"><span>مغز (مدل زبانی)</span><span id="txtBrain">—</span></div>
+    <div class="pbar"><i id="barBrain"></i></div>
+  </div>
+  <button id="activate">فعال‌سازی</button>
+  <button id="enter">ورود (بقیه در پس‌زمینه بارگذاری می‌شه)</button>
+  <p id="bootnote">بار اول باید آنلاین باشی تا مدل‌ها (حدود ۱ تا ۲ گیگابایت) یک بار دانلود بشن.<br>بعد از اون بدون اینترنت کار می‌کنه.<br>مرورگر اجازه‌ی میکروفون رو می‌پرسه؛ «Allow» رو بزن.</p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const TAU = Math.PI * 2;
+  const USER_NAME = 'مهدی';
+  const WEBLLM_URL = 'https://esm.run/@mlc-ai/web-llm@0.2.85';
+  const HAS_GPU = !!navigator.gpu;
+  const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* ================= storage / settings ================= */
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem('jarvis.' + k); return v === null ? d : JSON.parse(v); }catch(_){ return d; } },
+    set(k, v){ try{ localStorage.setItem('jarvis.' + k, JSON.stringify(v)); }catch(_){} }
+  };
+  const ASR_MODELS = [
+    {id:'onnx-community/whisper-tiny',  label:'tiny — خیلی سریع، دقت کم (حدود ۴۰ مگابایت)'},
+    {id:'onnx-community/whisper-base',  label:'base — متعادل (حدود ۹۰ مگابایت)'},
+    {id:'onnx-community/whisper-small', label:'small — دقیق‌تر برای فارسی (حدود ۲۵۰ مگابایت)'}
+  ];
+  const LLM_MODELS = [
+    {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',  label:'Qwen 1.5B — سبک (حدود ۱ گیگابایت)'},
+    {id:'gemma-2-2b-it-q4f16_1-MLC',          label:'Gemma 2B — فارسی بهتر (حدود ۱٫۵ گیگابایت)'},
+    {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC',    label:'Qwen 3B — قوی‌تر، برای گوشی قوی (حدود ۲ گیگابایت)'},
+    {id:'Llama-3.2-1B-Instruct-q4f16_1-MLC',  label:'Llama 1B — خیلی سبک (حدود ۰٫۸ گیگابایت)'}
+  ];
+  const settings = Object.assign({
+    asr: HAS_GPU ? 'onnx-community/whisper-small' : 'onnx-community/whisper-base',
+    llm: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    speak: true, confirm: true, autostop: true
+  }, store.get('settings', {}));
+  if (!ASR_MODELS.some(m => m.id === settings.asr)) settings.asr = 'onnx-community/whisper-base';
+  if (!LLM_MODELS.some(m => m.id === settings.llm)) settings.llm = LLM_MODELS[0].id;
+  const saveSettings = () => store.set('settings', settings);
+
+  /* ================= state ================= */
+  const LABELS = {boot:'OFFLINE', idle:'STANDBY', listening:'LISTENING', transcribing:'DECODING', review:'CONFIRM?', thinking:'THINKING', speaking:'SPEAKING', error:'ERROR'};
+  const COLORS = {boot:[79,216,255], idle:[79,216,255], listening:[100,238,255], transcribing:[180,140,255], review:[255,184,77], thinking:[180,140,255], speaking:[62,230,160], error:[255,93,108]};
+  const HINTS  = {
+    boot:'', idle:'روی دایره یا دکمه‌ی میکروفون بزن و حرف بزن',
+    listening:'بگو، دارم می‌شنوم… (دوباره بزن تا تموم شه)',
+    transcribing:'دارم صدات رو به متن تبدیل می‌کنم…',
+    review:'درست فهمیدم؟ اوکی کن یا دوباره بگو',
+    thinking:'دارم فکر می‌کنم… (برای توقف روی دایره بزن)',
+    speaking:'دارم جواب می‌دم… (برای حرف زدن روی دایره بزن)',
+    error:''
+  };
+  let state = 'boot';
+  const setState = (s, msg) => {
+    state = s; document.body.dataset.state = s;
+    $('statusText').textContent = LABELS[s];
+    $('hint').textContent = (msg !== undefined && msg !== null) ? msg : HINTS[s];
+  };
+
+  /* ================= clock / chips ================= */
+  const dtf = new Intl.DateTimeFormat('fa-IR', {weekday:'long', day:'numeric', month:'long'});
+  const tickClock = () => { const d = new Date(); $('clk').textContent = d.toLocaleTimeString('en-GB'); $('dt').textContent = dtf.format(d); };
+  tickClock(); setInterval(tickClock, 1000);
+  const netUpd = () => { $('net').textContent = navigator.onLine ? 'ONLINE' : 'OFFLINE'; };
+  netUpd(); addEventListener('online', netUpd); addEventListener('offline', netUpd);
+  async function permUpd(){
+    try{
+      const p = await navigator.permissions.query({name:'microphone'});
+      const f = () => { $('micperm').textContent = ({granted:'GRANTED', denied:'BLOCKED', prompt:'ASK'})[p.state] || p.state; };
+      f(); p.onchange = f;
+    }catch(_){ $('micperm').textContent = 'N/A'; }
+  }
+  permUpd();
+
+  /* ================= diagnostics ================= */
+  const showDiag = html => { $('diag').innerHTML = html; $('diag').classList.add('show'); };
+  const hideDiag = () => $('diag').classList.remove('show');
+  const MIC_HELP = '<br>اگه پنجره‌ی اجازه نیومد: روی آیکن قفل کنار نوار آدرس بزن ← <b>Microphone</b> ← <b>Allow</b> ← صفحه رو رفرش کن.';
+  function micDiag(reason){
+    switch(reason){
+      case 'nomedia': return '<b>این صفحه به میکروفون دسترسی نداره.</b><br>باید با آدرس <b>https</b> و داخل مرورگر Chrome باز بشه (نه داخل اپ دیگه).';
+      case 'NotAllowedError': case 'SecurityError': return '<b>اجازه‌ی میکروفون داده نشد.</b>' + MIC_HELP;
+      case 'NotFoundError': return '<b>میکروفونی پیدا نشد.</b>';
+      default: return '<b>خطای میکروفون:</b> ' + escapeHtml(reason) + MIC_HELP;
+    }
+  }
+
+  /* ================= chat bubbles ================= */
+  const chatEl = $('chat');
+  function addBubble(role, text){
+    const d = document.createElement('div');
+    d.className = 'msg ' + role; d.textContent = text;
+    chatEl.appendChild(d); chatEl.scrollTop = chatEl.scrollHeight;
+    return d;
+  }
+  const scrollChat = () => { chatEl.scrollTop = chatEl.scrollHeight; };
+
+  /* ================= engines: ears (Whisper) ================= */
+  const ears  = {state:'idle', pct:0, model:'', device:'', err:''};
+  const brain = {state:'idle', pct:0, model:'', text:'', err:''};
+  let asrWorker = null, asrReqId = 0;
+  const asrPending = new Map();
+
+  function makeAgg(){
+    const files = new Map();
+    return p => {
+      if (p && p.status === 'progress' && p.total) files.set(p.file, {l: p.loaded, t: p.total});
+      else if (p && p.status === 'done' && p.file){ const f = files.get(p.file); if (f) files.set(p.file, {l: f.t, t: f.t}); }
+      let l = 0, t = 0; files.forEach(f => { l += f.l; t += f.t; });
+      return t ? l / t : 0;
+    };
+  }
+
+  function renderEngines(){
+    const txt = (e, name) => e.state === 'idle' ? '—' : e.state === 'loading' ? Math.round(e.pct * 100) + '%' : e.state === 'ready' ? 'READY' : 'ERROR';
+    $('earsChip').textContent = txt(ears);
+    $('brainChip').textContent = txt(brain);
+    $('barEars').style.width = (ears.state === 'ready' ? 100 : Math.round(ears.pct * 100)) + '%';
+    $('barBrain').style.width = (brain.state === 'ready' ? 100 : Math.round(brain.pct * 100)) + '%';
+    const t2 = (e, extra) => e.state === 'error' ? 'خطا' : e.state === 'ready' ? ('آماده' + (extra ? ' (' + extra + ')' : '')) : e.state === 'loading' ? Math.round(e.pct * 100) + '٪' : '—';
+    $('txtEars').textContent = t2(ears, ears.device);
+    $('txtBrain').textContent = t2(brain, '');
+  }
+
+  function loadEars(){
+    return new Promise(resolve => {
+      try{ asrWorker && asrWorker.terminate(); }catch(_){}
+      asrPending.forEach(p => p.reject(new Error('reset'))); asrPending.clear();
+      ears.state = 'loading'; ears.pct = 0; ears.err = ''; ears.model = settings.asr; renderEngines();
+      const agg = makeAgg();
+      let w;
+      try{ w = new Worker('asr-worker.js', {type:'module'}); }
+      catch(e){ ears.state = 'error'; ears.err = String(e.message || e); renderEngines(); return resolve(false); }
+      asrWorker = w;
+      w.onmessage = ev => {
+        const d = ev.data || {};
+        if (d.type === 'progress'){ ears.pct = agg(d.p); renderEngines(); }
+        else if (d.type === 'ready'){ ears.state = 'ready'; ears.pct = 1; ears.device = d.device; renderEngines(); resolve(true); }
+        else if (d.type === 'error'){ ears.state = 'error'; ears.err = d.message; renderEngines(); resolve(false); }
+        else if (d.type === 'result'){ const p = asrPending.get(d.id); if (p){ asrPending.delete(d.id); p.resolve(d.text); } }
+        else if (d.type === 'terror'){ const p = asrPending.get(d.id); if (p){ asrPending.delete(d.id); p.reject(new Error(d.message)); } }
+      };
+      w.onerror = e => { ears.state = 'error'; ears.err = (e && e.message) || 'worker error'; renderEngines(); resolve(false); };
+      w.postMessage({type:'load', model: settings.asr});
+    });
+  }
+
+  function transcribe(audio){
+    return new Promise((resolve, reject) => {
+      if (ears.state !== 'ready') return reject(new Error('گوش‌ها آماده نیستند.'));
+      const id = ++asrReqId;
+      asrPending.set(id, {resolve, reject});
+      asrWorker.postMessage({type:'transcribe', id, audio}, [audio.buffer]);
+    });
+  }
+
+  /* ================= engines: brain (WebLLM) ================= */
+  let webllm = null, engine = null, llmWorker = null;
+  async function loadBrain(){
+    brain.state = 'loading'; brain.pct = 0; brain.err = ''; brain.model = settings.llm; brain.text = ''; renderEngines();
+    try{
+      if (engine){ try{ await engine.unload(); }catch(_){} engine = null; }
+      try{ llmWorker && llmWorker.terminate(); }catch(_){}
+      if (!navigator.gpu) throw new Error('nogpu');
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) throw new Error('nogpu');
+      webllm = webllm || await import(WEBLLM_URL);
+      if (!webllm.prebuiltAppConfig.model_list.some(m => m.model_id === settings.llm)) throw new Error('model-not-found');
+      llmWorker = new Worker('llm-worker.js', {type:'module'});
+      engine = await webllm.CreateWebWorkerMLCEngine(llmWorker, settings.llm, {
+        initProgressCallback: r => { brain.pct = r.progress || 0; brain.text = r.text || ''; renderEngines(); }
+      });
+      brain.state = 'ready'; brain.pct = 1;
+    }catch(e){
+      brain.state = 'error'; brain.err = String((e && e.message) || e); engine = null;
+    }
+    renderEngines();
+    return brain.state === 'ready';
+  }
+
+  function engineDiag(){
+    const parts = [];
+    if (ears.state === 'error')
+      parts.push('<b>گوش‌ها (Whisper) بالا نیومد:</b> ' + escapeHtml(ears.err) + '<br>اگه بار اوله، آنلاین باش تا مدل دانلود بشه. تا اون موقع می‌تونی تایپ کنی.');
+    if (brain.state === 'error'){
+      if (brain.err === 'nogpu')
+        parts.push('<b>مغز زبانی کار نمی‌کنه:</b> این مرورگر/گوشی WebGPU نداره. دستورهای ساده (ساعت، تاریخ، تایمر، یادداشت) همچنان آفلاین کار می‌کنن.');
+      else
+        parts.push('<b>مغز زبانی بالا نیومد:</b> ' + escapeHtml(brain.err) + '<br>از تنظیمات یه مدل سبک‌تر (Llama 1B) رو امتحان کن؛ ممکنه حافظه‌ی گوشی کم آورده باشه.');
+    }
+    if (parts.length) showDiag(parts.join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.15);margin:8px 0">')); else hideDiag();
+  }
+
+  /* ================= text helpers (Persian) ================= */
+  const FA_D = '۰۱۲۳۴۵۶۷۸۹', AR_D = '٠١٢٣٤٥٦٧٨٩';
+  const toEn = s => s.replace(/[۰-۹]/g, d => FA_D.indexOf(d)).replace(/[٠-٩]/g, d => AR_D.indexOf(d));
+  const toFa = n => String(n).replace(/\d/g, d => FA_D[d]);
+  const normText = t => toEn(String(t))
+    .replace(/‌/g, ' ').replace(/[يى]/g, 'ی').replace(/ك/g, 'ک')
+    .replace(/[ً-ْ]/g, '').replace(/[.,،؛؟!?"«»:]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  const OK_WORDS = ['اوکی','okay','ok','تایید','تاییدم','تأیید','باشه','درسته','آره','بله','انجام بده','اجرا کن'];
+  const RETRY_WORDS = ['دوباره','نه','نه غلطه','غلطه','اشتباه','لغو','پاک کن','کنسل','نخیر'];
+  const HALLUCINATIONS = [/^زیرنویس/, /^ترجمه و زیرنویس/, /^ممنون که تماشا/, /^thanks for watching/i, /^اشتراک/];
+  function cleanTranscript(t){
+    t = String(t || '').trim().replace(/\s+/g, ' ');
+    if (!t) return '';
+    if (HALLUCINATIONS.some(r => r.test(t))) return '';
+    return t;
+  }
+
+  /* ================= offline skills ================= */
+  const NUM_WORDS = {صفر:0, یک:1, یه:1, دو:2, سه:3, چهار:4, پنج:5, شش:6, شیش:6, هفت:7, هشت:8, نه:9, ده:10, یازده:11, دوازده:12, سیزده:13, چهارده:14,
+    پانزده:15, پونزده:15, شانزده:16, شونزده:16, هفده:17, هجده:18, نوزده:19, بیست:20, سی:30, چهل:40, پنجاه:50, شصت:60, هفتاد:70, هشتاد:80, نود:90,
+    صد:100, یکصد:100, دویست:200, سیصد:300, چهارصد:400, پانصد:500, ششصد:600, هفتصد:700, هشتصد:800, نهصد:900};
+
+  // مدت زمان از متن: «دو دقیقه و سی ثانیه»، «۵ دقیقه»، «نیم ساعت»، «یک ربع»
+  function parseDuration(t){
+    const tokens = normText(t).split(' ');
+    let total = 0, found = false, numAcc = null, lastUnit = 0;
+    for (let i = 0; i < tokens.length; i++){
+      const w = tokens[i];
+      if (/^\d+(\.\d+)?$/.test(w)){ numAcc = (numAcc || 0) + parseFloat(w); continue; }
+      if (w === 'و') continue;
+      if (w === 'نیم'){
+        if (numAcc === null && lastUnit){ total += 0.5 * lastUnit; found = true; }
+        else numAcc = (numAcc || 0) + 0.5;
+        continue;
+      }
+      if (w === 'ربع'){ total += 900; found = true; numAcc = null; if (/^ساعت/.test(tokens[i + 1] || '')) i++; continue; }
+      if (Object.prototype.hasOwnProperty.call(NUM_WORDS, w)){ numAcc = (numAcc || 0) + NUM_WORDS[w]; continue; }
+      let unit = 0;
+      if (w.startsWith('ثانیه')) unit = 1; else if (w.startsWith('دقیقه')) unit = 60; else if (w.startsWith('ساعت')) unit = 3600;
+      if (unit){
+        if (numAcc !== null){ total += numAcc * unit; found = true; lastUnit = unit; numAcc = null; }
+      }
+    }
+    if (found) return {seconds: Math.round(total)};
+    if (numAcc !== null) return {needUnit: true};
+    return null;
+  }
+
+  const fmtMMSS = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return (h ? String(h).padStart(2, '0') + ':' : '') + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); };
+  const spokenDuration = sec => {
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60, p = [];
+    if (h) p.push(toFa(h) + ' ساعت'); if (m) p.push(toFa(m) + ' دقیقه'); if (s) p.push(toFa(s) + ' ثانیه');
+    return p.join(' و ') || '۰ ثانیه';
+  };
+
+  /* --- timers --- */
+  let timers = store.get('timers', []);
+  let beepCtx = null;
+  function beep(){
+    try{
+      if (!beepCtx) return;
+      if (beepCtx.state === 'suspended') beepCtx.resume();
+      for (let i = 0; i < 3; i++){
+        const o = beepCtx.createOscillator(), g = beepCtx.createGain();
+        o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(beepCtx.destination);
+        const t0 = beepCtx.currentTime + i * 0.45;
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.4, t0 + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+        o.start(t0); o.stop(t0 + 0.32);
+      }
+    }catch(_){}
+    try{ navigator.vibrate && navigator.vibrate([300, 150, 300, 150, 300]); }catch(_){}
+  }
+  function renderTimers(){
+    const box = $('timers'); box.textContent = '';
+    const now = Date.now();
+    timers.forEach(t => { const d = document.createElement('div'); d.className = 'tm'; d.textContent = '⏱ ' + (t.label ? t.label + ' ' : '') + fmtMMSS((t.end - now) / 1000); box.appendChild(d); });
+  }
+  function fireTimer(t, late){
+    beep();
+    const msg = '⏰ ' + (t.label ? 'تایمر «' + t.label + '»' : 'تایمر') + ' تموم شد' + (late ? ' (' + spokenDuration(Math.round(t.dur)) + ' پیش تنظیم شده بود).' : '.');
+    addBubble('ai', msg);
+    speak(msg.replace('⏰ ', ''));
+  }
+  function tickTimers(){
+    if (!timers.length) return;
+    const now = Date.now(), done = timers.filter(t => t.end <= now);
+    if (done.length){ timers = timers.filter(t => t.end > now); store.set('timers', timers); done.forEach(t => fireTimer(t, false)); }
+    renderTimers();
+  }
+  setInterval(tickTimers, 1000);
+
+  /* --- notes --- */
+  const getNotes = () => store.get('notes', []);
+  const setNotes = n => store.set('notes', n);
+
+  function trySkills(text){
+    const t = normText(text);
+    if (!t) return null;
+
+    // سلام و تشکر
+    if (/^(سلام|درود|های|هلو|hi|hello)( جارویس)?( خوبی)?$/.test(t)) return {reply: `سلام ${USER_NAME}، چه کمکی از من برمیاد؟`};
+    if (/^(ممنون|مرسی|سپاس|دستت درد نکنه|متشکرم)/.test(t)) return {reply: 'خواهش می‌کنم.'};
+
+    // یادداشت‌ها
+    if (/یادداشت/.test(t)){
+      if (/(پاک|حذف)/.test(t)){
+        const n = getNotes();
+        if (!n.length) return {reply: 'یادداشتی وجود ندارد.'};
+        if (/(همه|تمام)/.test(t)){ setNotes([]); return {reply: `همه‌ی ${toFa(n.length)} یادداشت پاک شد.`}; }
+        const last = n.pop(); setNotes(n); return {reply: `آخرین یادداشت پاک شد: ${last.text}`};
+      }
+      if (/(بخون|نشون|بگو|بخوان|لیست|چیه|چی هست|چی دارم|یادداشت ?(ها|هام|هامو|هایم))/.test(t) && !/یادداشت کن/.test(t)){
+        const n = getNotes();
+        if (!n.length) return {reply: 'هنوز یادداشتی ذخیره نکرده‌ای.'};
+        const last = n.slice(-5).reverse();
+        return {reply: `${toFa(n.length)} یادداشت داری. آخرین‌ها:\n` + last.map((x, i) => `${toFa(i + 1)}. ${x.text}`).join('\n')};
+      }
+      let content = '';
+      let m = t.match(/^(.+?) ?(?:رو|را)? یادداشت کن$/);
+      if (m) content = m[1];
+      else { m = t.match(/یادداشت(?: کن)?(?: که)? ?(.*)$/); content = m ? m[1] : ''; }
+      content = toFa(content.trim());
+      if (!content) return {reply: 'چی رو یادداشت کنم؟'};
+      const n = getNotes(); n.push({text: content, t: Date.now()}); setNotes(n);
+      return {reply: 'یادداشت شد: ' + content};
+    }
+
+    // تایمر
+    if (/(تایمر|زمان ?سنج|کرنومتر|شمارش معکوس)/.test(t)){
+      if (/(لغو|کنسل|پاک|حذف|خاموش|قطع)/.test(t)){
+        const c = timers.length; timers = []; store.set('timers', timers); renderTimers();
+        return {reply: c ? 'تایمرها لغو شد.' : 'تایمر فعالی وجود ندارد.'};
+      }
+      const d = parseDuration(t);
+      if (!d) return {reply: 'تایمر برای چه مدتی؟ مثلاً بگو «تایمر ده دقیقه».'};
+      if (d.needUnit) return {reply: 'چند دقیقه یا چند ثانیه؟'};
+      if (d.seconds < 1 || d.seconds > 86400) return {reply: 'مدت تایمر باید بین یک ثانیه تا ۲۴ ساعت باشد.'};
+      timers.push({id: Date.now(), end: Date.now() + d.seconds * 1000, dur: d.seconds, label: ''});
+      store.set('timers', timers); renderTimers();
+      return {reply: `تایمر ${spokenDuration(d.seconds)} تنظیم شد. (فقط تا وقتی برنامه باز باشد زنگ می‌زند.)`};
+    }
+
+    // ساعت
+    if (/ساعت/.test(t) && /(چنده|چند|چقدر)/.test(t) && !/(دقیقه|ثانیه)/.test(t)){
+      const d = new Date(), h = d.getHours(), m = d.getMinutes();
+      return {reply: m === 0 ? `ساعت ${toFa(h)} است.` : `ساعت ${toFa(h)} و ${toFa(m)} دقیقه است.`};
+    }
+    // تاریخ
+    if (/(امروز|تاریخ|چه روزی)/.test(t) && /(چندم|چنده|چه روزی|چه روز|تاریخ)/.test(t) && !/یادداشت/.test(t)){
+      return {reply: 'امروز ' + new Intl.DateTimeFormat('fa-IR', {weekday:'long', year:'numeric', month:'long', day:'numeric'}).format(new Date()) + ' است.'};
+    }
+    return null;
+  }
+
+  /* ================= speech synthesis ================= */
+  let speaking = false, voiceCache = null;
+  function pickVoice(){
+    if (!('speechSynthesis' in window)) return null;
+    const vs = speechSynthesis.getVoices() || [];
+    return vs.find(v => /^fa/i.test(v.lang)) || vs.find(v => /persian|farsi|فارسی/i.test(v.name)) || null;
+  }
+  if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { voiceCache = pickVoice(); updateVoiceInfo(); };
+  function speak(text, onend){
+    const v = voiceCache || (voiceCache = pickVoice());
+    if (!settings.speak || !v){ if (onend) onend(false); return false; }
+    let finished = false;
+    const done = ok => { if (finished) return; finished = true; speaking = false; if (onend) onend(ok); };
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = v; u.lang = v.lang; u.rate = 1;
+    u.onstart = () => { speaking = true; };
+    u.onend = () => done(true); u.onerror = () => done(false);
+    try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(_){ done(false); return false; }
+    return true;
+  }
+  function stopSpeaking(){ try{ speechSynthesis.cancel(); }catch(_){} speaking = false; }
+
+  /* ================= LLM conversation ================= */
+  let history = [];
+  function systemPrompt(){
+    const now = new Intl.DateTimeFormat('fa-IR', {dateStyle:'full', timeStyle:'short'}).format(new Date());
+    return `تو «جارویس» هستی، دستیار صوتی شخصی ${USER_NAME}. ${USER_NAME} در دبیرخانه و دفتر فنی یک شرکت ساختمانی کار می‌کند.
+اکنون: ${now}.
+قوانین: فقط فارسی جواب بده. کوتاه و روشن بنویس، حداکثر سه جمله، مگر اینکه نامه یا متن بلند خواسته شود. بدون مارک‌داون و بدون ایموجی. اگر چیزی را نمی‌دانی یا مطمئن نیستی، صادقانه بگو «نمی‌دانم». ورودی از تشخیص گفتار می‌آید و ممکن است غلط داشته باشد؛ اگر منظور روشن نبود یک سؤال کوتاه بپرس. تو آفلاین هستی و به اینترنت و خبرهای روز دسترسی نداری.`;
+  }
+
+  function finishReply(text){
+    const started = speak(text, () => { if (state === 'speaking') setState('idle'); });
+    if (started) setState('speaking');
+    else setState('idle', settings.speak && !voiceCache ? 'جواب بالا نوشته شد. (صدای فارسی روی این دستگاه نصب نیست.)' : 'جواب بالا نوشته شد.');
+  }
+
+  async function runCommand(text){
+    setState('thinking');
+    const sk = trySkills(text);
+    if (sk){
+      addBubble('ai', sk.reply);
+      history.push({role:'user', content: text}, {role:'assistant', content: sk.reply});
+      return finishReply(sk.reply.split('\n')[0]);
+    }
+    if (brain.state !== 'ready'){
+      const msg = brain.state === 'loading'
+        ? 'مغز هنوز در حال بارگذاری است. چند لحظه صبر کن.'
+        : 'مغز زبانی در دسترس نیست. فقط دستورهای ساده مثل ساعت، تاریخ، تایمر و یادداشت کار می‌کنند.';
+      addBubble('ai', msg);
+      return finishReply(msg);
+    }
+    const bubble = addBubble('ai', '…');
+    history.push({role:'user', content: text});
+    try{
+      const msgs = [{role:'system', content: systemPrompt()}].concat(history.slice(-10));
+      const stream = await engine.chat.completions.create({messages: msgs, stream: true, temperature: 0.6, max_tokens: 400});
+      let full = '';
+      for await (const ch of stream){
+        const d = ch.choices && ch.choices[0] && ch.choices[0].delta && ch.choices[0].delta.content;
+        if (d){ full += d; bubble.textContent = full; scrollChat(); }
+      }
+      full = full.trim() || 'جوابی تولید نشد.';
+      bubble.textContent = full;
+      history.push({role:'assistant', content: full});
+      finishReply(full);
+    }catch(e){
+      history.pop();
+      bubble.textContent = 'خطا در تولید جواب: ' + ((e && e.message) || e);
+      setState('error', '—');
+    }
+  }
+
+  /* ================= confirm flow ================= */
+  const heard = $('heard'), btnOk = $('confirm'), btnRetry = $('retry');
+  let pending = '';
+  function handleHeard(text){
+    if (pending && settings.confirm){
+      const n = normText(text);
+      if (OK_WORDS.includes(n)){ heard.value = pending; return confirmCmd(); }
+      if (RETRY_WORDS.includes(n)){ return retry(); }
+    }
+    heard.value = text; pending = text;
+    if (!settings.confirm) return confirmCmd();
+    btnOk.disabled = btnRetry.disabled = false;
+    setState('review');
+    speak('این رو فهمیدم: ' + text + '. درسته؟');
+  }
+  function confirmCmd(){
+    const text = heard.value.trim(); if (!text) return;
+    stopSpeaking();
+    pending = ''; heard.value = ''; btnOk.disabled = btnRetry.disabled = true;
+    addBubble('user', text);
+    runCommand(text);
+  }
+  function retry(){ pending = ''; heard.value = ''; btnOk.disabled = btnRetry.disabled = true; startListening(); }
+
+  /* ================= recording ================= */
+  let analyser = null, freq = null, rec = null, bump = 0;
+  const pickMime = () => {
+    if (!window.MediaRecorder) return '';
+    return ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(m => { try{ return MediaRecorder.isTypeSupported(m); }catch(_){ return false; } }) || '';
+  };
+  async function toMono16k(arrayBuffer){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ac = new AC();
+    let buf;
+    try{ buf = await ac.decodeAudioData(arrayBuffer.slice(0)); } finally { try{ ac.close(); }catch(_){} }
+    const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * 16000)), 16000);
+    const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
+    const out = await off.startRendering();
+    return new Float32Array(out.getChannelData(0));
+  }
+
+  async function startListening(){
+    if (rec || state === 'transcribing') return;
+    hideDiag(); stopSpeaking();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ setState('error', '—'); showDiag(micDiag('nomedia')); return; }
+    if (!window.MediaRecorder){ setState('error', '—'); showDiag('<b>این مرورگر ضبط صدا (MediaRecorder) نداره.</b> Chrome رو امتحان کن.'); return; }
+    let stream;
+    try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, channelCount:1}}); }
+    catch(e){ permUpd(); setState('error', '—'); showDiag(micDiag(e.name || String(e))); return; }
+    permUpd();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const actx = new AC();
+    const srcNode = actx.createMediaStreamSource(stream);
+    const an = actx.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = .75; srcNode.connect(an);
+    analyser = an; freq = new Uint8Array(an.frequencyBinCount);
+    const td = new Uint8Array(an.fftSize);
+    const mime = pickMime();
+    let mr;
+    try{ mr = new MediaRecorder(stream, mime ? {mimeType: mime} : undefined); }
+    catch(e){ stream.getTracks().forEach(t => t.stop()); try{ actx.close(); }catch(_){} analyser = freq = null; setState('error', '—'); showDiag('<b>ضبط صدا شروع نشد:</b> ' + escapeHtml(e.message || e)); return; }
+    const r = {stream, mr, actx, chunks: [], startedAt: performance.now(), heardSpeech: false, lastVoice: performance.now(), floor: 0, calib: [], cancelled: false, timer: 0};
+    mr.ondataavailable = e => { if (e.data && e.data.size) r.chunks.push(e.data); };
+    mr.onstop = () => finishRecording(r);
+    mr.start(250);
+    rec = r;
+    setState('listening');
+    r.timer = setInterval(() => {
+      an.getByteTimeDomainData(td);
+      let s = 0; for (let i = 0; i < td.length; i++){ const v = (td[i] - 128) / 128; s += v * v; }
+      const rms = Math.sqrt(s / td.length);
+      const now = performance.now(), el = now - r.startedAt;
+      if (el < 400){ r.calib.push(rms); r.floor = r.calib.reduce((a, b) => a + b, 0) / r.calib.length; return; }
+      const thr = Math.max(0.02, r.floor * 2.5);
+      if (rms > thr){ r.heardSpeech = true; r.lastVoice = now; bump = Math.min(.55, bump + .15); }
+      if (settings.autostop){
+        if (r.heardSpeech && now - r.lastVoice > 1400) stopListening();
+        else if (!r.heardSpeech && el > 7000){ r.cancelled = true; stopListening(); }
+      }
+      if (el > 30000) stopListening();
+    }, 80);
+  }
+  function stopListening(){
+    if (rec && rec.mr.state !== 'inactive'){ try{ rec.mr.stop(); }catch(_){} }
+  }
+  async function finishRecording(r){
+    clearInterval(r.timer); rec = null;
+    r.stream.getTracks().forEach(t => t.stop()); try{ r.actx.close(); }catch(_){}
+    analyser = freq = null;
+    if (r.cancelled || !r.heardSpeech){ setState('idle', 'صدایی نشنیدم. دوباره امتحان کن.'); return; }
+    if (ears.state !== 'ready'){
+      setState('idle');
+      showDiag(ears.state === 'loading' ? '<b>گوش‌ها هنوز در حال بارگذاری‌اند.</b> چند لحظه صبر کن یا متن رو تایپ کن.' : '<b>گوش‌ها (Whisper) آماده نیستند.</b> متن رو تایپ کن یا از تنظیمات دوباره بارگذاری کن.');
+      return;
+    }
+    setState('transcribing');
+    try{
+      const blob = new Blob(r.chunks, {type: r.mr.mimeType || 'audio/webm'});
+      const pcm = await toMono16k(await blob.arrayBuffer());
+      if (pcm.length < 16000 * 0.4){ setState('idle', 'خیلی کوتاه بود. دوباره بگو.'); return; }
+      const text = cleanTranscript(await transcribe(pcm));
+      if (!text){ setState('idle', 'نفهمیدم چی گفتی. دوباره بگو.'); return; }
+      handleHeard(text);
+    }catch(e){
+      setState('error', '—'); showDiag('<b>خطا در تبدیل صدا:</b> ' + escapeHtml((e && e.message) || e));
+    }
+  }
+
+  /* ================= UI wiring ================= */
+  function toggle(){
+    if (state === 'boot') return;
+    if (state === 'listening') return stopListening();
+    if (state === 'transcribing') return;
+    if (state === 'speaking'){ stopSpeaking(); return startListening(); }
+    if (state === 'thinking'){ try{ engine && engine.interruptGenerate(); }catch(_){} return; }
+    startListening();
+  }
+  $('hud').addEventListener('click', toggle);
+  $('mic').addEventListener('click', toggle);
+  btnOk.addEventListener('click', confirmCmd);
+  btnRetry.addEventListener('click', retry);
+  heard.addEventListener('input', () => {
+    const has = heard.value.trim().length > 0;
+    pending = heard.value.trim(); btnOk.disabled = btnRetry.disabled = !has;
+    if (has && (state === 'idle' || state === 'review')) setState('review');
+  });
+  heard.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); if (heard.value.trim()) confirmCmd(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target === heard || e.target.tagName === 'SELECT' || state === 'boot') return;
+    if (e.code === 'Space'){ e.preventDefault(); toggle(); }
+  });
+
+  /* ---------- settings drawer ---------- */
+  function fillSelect(sel, list, cur){ sel.textContent = ''; list.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label; if (m.id === cur) o.selected = true; sel.appendChild(o); }); }
+  function updateVoiceInfo(){
+    const v = voiceCache || pickVoice();
+    $('voiceInfo').textContent = v ? `صدای فارسی پیدا شد: ${v.name}` : 'صدای فارسی روی این دستگاه نصب نیست؛ جواب‌ها فقط نوشته می‌شن. (در تنظیمات اندروید ← Text-to-speech یک صدای فارسی نصب کن.)';
+  }
+  async function updateStorageInfo(){
+    let s = 'فضای ذخیره‌سازی: نامشخص';
+    try{ const e = await navigator.storage.estimate(); s = `فضای استفاده‌شده: ${(e.usage / 1048576).toFixed(0)} مگابایت از ${(e.quota / 1073741824).toFixed(1)} گیگابایت`; }catch(_){}
+    $('storageInfo').textContent = s;
+  }
+  function openSettings(){
+    fillSelect($('asrSel'), ASR_MODELS, settings.asr); fillSelect($('llmSel'), LLM_MODELS, settings.llm);
+    $('setSpeak').checked = settings.speak; $('setConfirm').checked = settings.confirm; $('setAuto').checked = settings.autostop;
+    $('gpuInfo').textContent = HAS_GPU ? 'WebGPU: موجود ✓' : 'WebGPU: روی این مرورگر نیست؛ مغز زبانی کار نمی‌کنه.';
+    updateVoiceInfo(); updateStorageInfo();
+    $('settings').classList.add('open');
+  }
+  $('gear').addEventListener('click', openSettings);
+  $('closeSettings').addEventListener('click', () => $('settings').classList.remove('open'));
+  $('setSpeak').addEventListener('change', e => { settings.speak = e.target.checked; saveSettings(); if (!settings.speak) stopSpeaking(); });
+  $('setConfirm').addEventListener('change', e => { settings.confirm = e.target.checked; saveSettings(); });
+  $('setAuto').addEventListener('change', e => { settings.autostop = e.target.checked; saveSettings(); });
+  $('testVoice').addEventListener('click', () => { const ok = speak('سلام ' + USER_NAME + '، صدام رو می‌شنوی؟'); if (!ok) $('voiceInfo').textContent += ' — صدایی پخش نشد.'; });
+  $('applyModels').addEventListener('click', async () => {
+    const a = $('asrSel').value, l = $('llmSel').value;
+    const changeA = a !== ears.model, changeL = l !== brain.model;
+    settings.asr = a; settings.llm = l; saveSettings();
+    $('settings').classList.remove('open');
+    if (changeA) await loadEars();
+    if (changeL) await loadBrain();
+    engineDiag();
+  });
+  $('clearNotes').addEventListener('click', () => { if (confirm('همه‌ی یادداشت‌ها پاک بشن؟')){ setNotes([]); updateStorageInfo(); } });
+  $('clearModels').addEventListener('click', async () => {
+    if (!confirm('مدل‌های دانلودشده پاک بشن؟ دفعه‌ی بعد باید دوباره آنلاین دانلودشون کنی.')) return;
+    try{ const keys = await caches.keys(); for (const k of keys) if (/webllm|transformers/i.test(k)) await caches.delete(k); }catch(_){}
+    ears.state = 'idle'; brain.state = 'idle'; try{ asrWorker && asrWorker.terminate(); }catch(_){} try{ engine && await engine.unload(); }catch(_){} engine = null;
+    renderEngines(); updateStorageInfo();
+    $('storageInfo').textContent += ' — مدل‌ها پاک شدند؛ صفحه رو رفرش کن و دوباره فعال‌سازی بزن.';
+  });
+
+  /* ---------- boot / activation ---------- */
+  const bootLog = line => { $('bootlog').textContent += line + '\n'; };
+  let entered = false, micOK = false;
+  async function ensureMicPermission(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return {ok: false, reason: 'nomedia'};
+    try{ const s = await navigator.mediaDevices.getUserMedia({audio: true}); s.getTracks().forEach(t => t.stop()); permUpd(); return {ok: true}; }
+    catch(e){ permUpd(); return {ok: false, reason: e.name || String(e)}; }
+  }
+  function enter(){
+    if (entered) return; entered = true;
+    $('boot').classList.add('hide');
+    setState('idle');
+    engineDiag();
+    if (!micOK) return;
+    addBubble('sys', 'دستورهای آفلاین: «ساعت چنده»، «امروز چندمه»، «تایمر ده دقیقه»، «یادداشت کن …»، «یادداشت‌هام رو بخون». بقیه‌ی سؤال‌ها رو مغز زبانی جواب می‌ده.');
+  }
+  $('activate').addEventListener('click', async () => {
+    $('activate').disabled = true;
+    const micP = ensureMicPermission();          // باید داخل همین کلیک شروع بشه تا پنجره‌ی اجازه نمایش داده بشه
+    try{ beepCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(_){}
+    if ('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(() => {}); }
+    try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}
+    bootLog('> CORE ............ OK');
+    const mic = await micP; micOK = mic.ok;
+    bootLog('> MICROPHONE ...... ' + (mic.ok ? 'OK' : 'FAIL'));
+    bootLog('> WEBGPU .......... ' + (HAS_GPU ? 'OK' : 'N/A'));
+    bootLog('> NETWORK ......... ' + (navigator.onLine ? 'ONLINE' : 'OFFLINE'));
+    if (!mic.ok){ setState('boot'); showDiag(micDiag(mic.reason)); }
+    $('activate').style.display = 'none';
+    $('loadbox').classList.add('show'); $('enter').classList.add('show');
+    renderEngines();
+    await loadEars();          // اول گوش‌ها، بعد مغز (پشت سر هم تا حافظه‌ی گوشی فشار نخوره)
+    await loadBrain();
+    // تایمرهایی که وقتی برنامه بسته بود تموم شدن
+    const now = Date.now(), expired = timers.filter(t => t.end <= now);
+    if (expired.length){ timers = timers.filter(t => t.end > now); store.set('timers', timers); expired.forEach(t => fireTimer(t, true)); }
+    renderTimers();
+    enter();
+    engineDiag();
+  });
+  $('enter').addEventListener('click', enter);
+  $('pwr').addEventListener('click', () => {
+    stopSpeaking(); stopListening(); hideDiag();
+    $('settings').classList.remove('open');
+    setState('boot'); entered = false;
+    $('boot').classList.remove('hide');
+    $('activate').style.display = 'none'; $('enter').classList.add('show');
+    bootLog('> STANDBY — ورود رو بزن');
+  });
+
+  /* ================= HUD canvas ================= */
+  const hud = $('hud'), ctx = hud.getContext('2d');
+  const bg = $('bg'), bctx = bg.getContext('2d');
+  let dpr = 1, S = 300;
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    S = hud.clientWidth || 300;
+    hud.width = hud.height = Math.round(S * dpr);
+    bg.width = innerWidth * dpr; bg.height = innerHeight * dpr;
+  }
+  let col = [...COLORS.boot], level = 0;
+
+  function arcSet(cx, cy, rad, lw, count, len, rot, color){
+    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'butt';
+    for (let k = 0; k < count; k++){ const a = rot + k * TAU / count; ctx.beginPath(); ctx.arc(cx, cy, rad, a, a + len); ctx.stroke(); }
+  }
+  function drawHud(t){
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, S, S);
+    const cx = S / 2, cy = S / 2, R = S / 2 * 0.98;
+    const [r, g, b] = col.map(Math.round);
+    const C = a => `rgba(${r},${g},${b},${a})`;
+    const act = (state === 'listening' || state === 'thinking' || state === 'transcribing') ? 1 : (state === 'boot' ? .3 : .55);
+
+    const gr = ctx.createRadialGradient(cx, cy, R * .1, cx, cy, R);
+    gr.addColorStop(0, C(.30 + level * .45)); gr.addColorStop(.6, C(.06)); gr.addColorStop(1, C(0));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
+
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * .05);
+    const N = 180;
+    for (let i = 0; i < N; i++){
+      const a = i / N * TAU, long = i % 10 === 0, mid = i % 5 === 0;
+      const r1 = R * .975, r2 = r1 - R * (long ? .055 : mid ? .035 : .02);
+      ctx.strokeStyle = C(long ? .95 : mid ? .55 : .28); ctx.lineWidth = long ? 2 : 1;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke();
+    }
+    ctx.restore();
+
+    arcSet(cx, cy, R * .875, R * .03, 3, 1.55, t * .35 * (1 + act), C(.9));
+    arcSet(cx, cy, R * .875, R * .012, 3, 1.55, -t * .2 + 1.0, C(.25));
+    arcSet(cx, cy, R * .80, R * .012, 14, .32, -t * .55, C(.55));
+
+    ctx.save(); ctx.setLineDash([3, 9]); ctx.lineDashOffset = -t * 22;
+    ctx.strokeStyle = C(.55); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, R * .745, 0, TAU); ctx.stroke(); ctx.restore();
+
+    for (let k = 0; k < 4; k++){
+      const a = -t * .3 + k * TAU / 4, rr = R * .70;
+      ctx.save(); ctx.translate(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); ctx.rotate(a + Math.PI / 2);
+      ctx.fillStyle = C(.9); ctx.beginPath(); ctx.moveTo(0, -R * .025); ctx.lineTo(R * .018, R * .014); ctx.lineTo(-R * .018, R * .014); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+
+    const sw = t * (state === 'listening' ? 2.4 : (state === 'thinking' || state === 'transcribing') ? 3.2 : .7);
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 42; i++){
+      const a = sw - i * .026;
+      ctx.strokeStyle = C((1 - i / 42) * .20 * act);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R * .66, cy + Math.sin(a) * R * .66); ctx.stroke();
+    }
+
+    const BARS = 72, base = R * .50;
+    ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2, R * .012);
+    for (let i = 0; i < BARS; i++){
+      const a = i / BARS * TAU - Math.PI / 2;
+      let v;
+      if (analyser && freq){ const idx = Math.floor(Math.abs(i - BARS / 2) / (BARS / 2) * 42); v = freq[idx] / 255; }
+      else v = (.5 + .5 * Math.sin(t * 5 + i * .7 + Math.sin(t * 2 + i * .3))) * Math.min(1, level * 2.4);
+      const len = R * (.018 + v * .17);
+      ctx.strokeStyle = C(.35 + v * .65);
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * base, cy + Math.sin(a) * base); ctx.lineTo(cx + Math.cos(a) * (base + len), cy + Math.sin(a) * (base + len)); ctx.stroke();
+    }
+
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = C(.9); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R * .485, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = C(.25); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, R * .44, 0, TAU); ctx.stroke();
+    arcSet(cx, cy, R * .40, R * .016, 4, .95, -t * .9 * (1 + act), C(.8));
+
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * .18);
+    ctx.strokeStyle = C(.75); ctx.lineWidth = 1.6; ctx.beginPath();
+    for (let k = 0; k <= 6; k++){ const a = k * TAU / 6, rr = R * .335; if (k) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    ctx.stroke();
+    ctx.strokeStyle = C(.4);
+    for (let k = 0; k < 6; k++){ const a = k * TAU / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * .23, Math.sin(a) * R * .23); ctx.lineTo(Math.cos(a) * R * .335, Math.sin(a) * R * .335); ctx.stroke(); }
+    ctx.restore();
+
+    const pr = R * (.21 + level * .06 + .008 * Math.sin(t * 3));
+    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr);
+    cg.addColorStop(0, 'rgba(255,255,255,.95)'); cg.addColorStop(.35, C(.85)); cg.addColorStop(1, C(0));
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, pr, 0, TAU); ctx.fill();
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = C(1); ctx.shadowBlur = 10; ctx.fillStyle = '#02121c';
+    ctx.font = `900 ${R * .046}px Orbitron, monospace`;
+    ctx.fillText(LABELS[state], cx, cy);
+    ctx.shadowBlur = 0;
+  }
+
+  const P = Array.from({length: 55}, () => ({x: Math.random(), y: Math.random(), vx: (Math.random() - .5) * .00012, vy: -Math.random() * .00022 - .00005, s: Math.random() * 1.6 + .4}));
+  function drawBg(){
+    const w = bg.width, h = bg.height;
+    bctx.setTransform(1, 0, 0, 1, 0, 0); bctx.clearRect(0, 0, w, h);
+    const [r, g, b] = col.map(Math.round);
+    for (const p of P){
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -.02){ p.y = 1.02; p.x = Math.random(); }
+      if (p.x < -.02) p.x = 1.02;
+      if (p.x > 1.02) p.x = -.02;
+    }
+    for (let i = 0; i < P.length; i++){
+      const a = P[i];
+      bctx.fillStyle = `rgba(${r},${g},${b},.5)`; bctx.beginPath(); bctx.arc(a.x * w, a.y * h, a.s * dpr, 0, TAU); bctx.fill();
+      for (let j = i + 1; j < P.length; j++){
+        const q = P[j], dx = (a.x - q.x) * w, dy = (a.y - q.y) * h, d = Math.hypot(dx, dy);
+        if (d < 110 * dpr){ bctx.strokeStyle = `rgba(${r},${g},${b},${(1 - d / (110 * dpr)) * .16})`; bctx.lineWidth = 1; bctx.beginPath(); bctx.moveTo(a.x * w, a.y * h); bctx.lineTo(q.x * w, q.y * h); bctx.stroke(); }
+      }
+    }
+  }
+
+  const t0 = performance.now();
+  function frame(now){
+    const t = (now - t0) / 1000;
+    const tc = COLORS[state] || COLORS.idle;
+    for (let i = 0; i < 3; i++) col[i] += (tc[i] - col[i]) * .08;
+    let tl;
+    if (analyser && freq){
+      analyser.getByteFrequencyData(freq);
+      let s = 0; for (let i = 0; i < freq.length; i++) s += freq[i];
+      tl = Math.min(1, (s / freq.length) / 90);
+    } else if (state === 'transcribing' || state === 'thinking') tl = .14 + .07 * Math.sin(t * 5);
+    else if (state === 'speaking' || speaking) tl = .26 + .14 * Math.sin(t * 9) * Math.sin(t * 3.1);
+    else tl = .04 + .02 * Math.sin(t * 1.5);
+    bump *= .9;
+    level += (tl + bump * 0 - level) * .25;
+    $('micbar').style.width = Math.round(Math.min(1, level * 1.6) * 100) + '%';
+    drawHud(t); drawBg();
+    requestAnimationFrame(frame);
+  }
+  addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+
+  voiceCache = pickVoice();
+  setState('boot');
+  renderEngines();
+  renderTimers();
+})();
+</script>
+</body>
+</html>
